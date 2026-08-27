@@ -4,8 +4,8 @@ namespace TechMarket_Pedidos.Data
 {
 	public interface IPedidoRepositorio
 	{
-		IEnumerable<Pedido> ObtenerTodos();
-		Pedido? ObtenerPorId(int id);
-		Pedido Crear(Pedido pedido);
+		Task<IEnumerable<Pedido>> ObtenerTodos();
+		Task<Pedido?> ObtenerPorId(int id);
+		Task<Pedido> Crear(Pedido pedido);
 	}
 }

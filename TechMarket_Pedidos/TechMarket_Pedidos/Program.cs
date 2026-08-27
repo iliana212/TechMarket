@@ -1,13 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using TechMarket_Pedidos.Clients;
 using TechMarket_Pedidos.Data;
-using Polly;
-using Microsoft.Extensions.Http.Resilience;
-using TechMarket_Pedidos.Middleware;
 using TechMarket_Pedidos.Endpoints;
+using TechMarket_Pedidos.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var urlProductos = builder.Configuration["Servicios:Productos:BaseUrl"] ?? throw new InvalidOperationException("Falta de Url para conectar ");
+
+var conexion = builder.Configuration.GetConnectionString("TechMarketPedidos")
+   ?? throw new InvalidOperationException("Falta cadena de conexion");
+
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(conexion));
 
 builder.Services.AddHttpClient<IProductosClient, ProductosClient>(cliente =>
 {
@@ -35,7 +41,7 @@ builder.Services.AddHttpClient<IProductosClient, ProductosClient>(cliente =>
 
 // Add services to the container.
 
-builder.Services.AddSingleton<IPedidoRepositorio, PedidoRepositorio>();
+builder.Services.AddScoped<IPedidoRepositorio, PedidoRepositorio>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

@@ -13,17 +13,17 @@ namespace TechMarket_Pedidos.Endpoints
 				.WithTags("Pedidos");
 
 			//GET
-			grupo.MapGet("/", (IPedidoRepositorio repo) =>
+			grupo.MapGet("/", async (IPedidoRepositorio repo) =>
 			{
-				var pedidos = repo.ObtenerTodos().Select(APedidoDTO);
+				var pedidos = (await repo.ObtenerTodos()).Select(APedidoDTO);
 				return Results.Ok(pedidos);
 			})
 			.WithName("ObtenerPedidos").WithSummary("Lista todos los pedidos");
 
 			//GET
-			grupo.MapGet("/{id:int}", (int id, IPedidoRepositorio repo) =>
+			grupo.MapGet("/{id:int}", async (int id, IPedidoRepositorio repo) =>
 			{
-				var pedido = repo.ObtenerPorId(id);
+				var pedido = await repo.ObtenerPorId(id);
 				if (pedido is null)
 					throw new RecursoNoEncontradoException($"No existe un pedido con Id {id}");
 
@@ -71,7 +71,7 @@ namespace TechMarket_Pedidos.Endpoints
 
 				pedido.Total = pedido.Items.Sum(i => i.Subtotal);
 
-				var creado = repo.Crear(pedido);
+				var creado = await repo.Crear(pedido);
 				return Results.Created($"/api/pedidos/{creado.Id}", APedidoDTO(creado));
 			})
 			.WithName("CrearPedido").WithSummary("Crea un nuevo pedido");
