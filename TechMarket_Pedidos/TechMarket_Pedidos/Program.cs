@@ -1,0 +1,81 @@
+using TechMarket_Pedidos.Clients;
+using TechMarket_Pedidos.Data;
+using Polly;
+using Microsoft.Extensions.Http.Resilience;
+using TechMarket_Pedidos.Middleware;
+using TechMarket_Pedidos.Endpoints;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var urlProductos = builder.Configuration["Servicios:Productos:BaseUrl"] ?? throw new InvalidOperationException("Falta de Url para conectar ");
+
+builder.Services.AddHttpClient<IProductosClient, ProductosClient>(cliente =>
+{
+	cliente.BaseAddress = new Uri(urlProductos);
+}).AddResilienceHandler("Producto-pipeline", pipeline =>
+{
+	pipeline.AddRetry(new HttpRetryStrategyOptions
+	{
+		MaxRetryAttempts = 3,
+		BackoffType = DelayBackoffType.Exponential,
+		Delay = TimeSpan.FromMilliseconds(300),
+		UseJitter = true
+	});
+
+	pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+
+	pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+	{
+		FailureRatio = 0.5,
+		MinimumThroughput = 4,
+		SamplingDuration = TimeSpan.FromSeconds(10),
+		BreakDuration = TimeSpan.FromSeconds(15)
+	});
+});
+
+// Add services to the container.
+
+builder.Services.AddSingleton<IPedidoRepositorio, PedidoRepositorio>();
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+	options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
+	{
+		Title = "TechMarket - Microservicios de Pedidos",
+		Version = "v1",
+		Description = "Curso de Microservicios con .Net y Azure"
+	});
+});
+
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+app.UseExceptionHandler();
+
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI(options =>
+	{
+		options.SwaggerEndpoint("/swagger/v1/swagger.json", "Pedidos API");
+	});
+}
+
+app.UseHttpsRedirection();
+
+app.MapGet("/", () => Results.Ok(new
+{
+	servicio = "ms-pedidos",
+	estado = "OK",
+	mensaje = "TechMarket - Microservicio de pedidos",
+	dependeDe = urlProductos
+}));
+
+app.MapPedidosEndpoints();
+
+app.Run();

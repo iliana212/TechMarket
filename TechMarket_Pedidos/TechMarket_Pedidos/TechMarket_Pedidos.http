@@ -1,0 +1,6 @@
+@TechMarket_Pedidos_HostAddress = http://localhost:5121
+
+GET {{TechMarket_Pedidos_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
