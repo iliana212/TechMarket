@@ -55,3 +55,40 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Visual Studio
+.vs/
+
+# Configuracion de IDEs
+.vscode/
+.idea/
+
+# Archivos de usuario
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Configuraciones sensibles
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.json
+
+# Archivos de Docker locales
+docker-compose.override.yml
+
+# Resultados de pruebas y cobertura
+TestResults/
+*.coverage
+*.coveragexml
+
+# Archivos generados por herramientas
+*.dbmdl
+*.jfm
+*.pdb
+
+# Certificados y claves
+*.cer
+*.key
+*.pfx
+*.pem
