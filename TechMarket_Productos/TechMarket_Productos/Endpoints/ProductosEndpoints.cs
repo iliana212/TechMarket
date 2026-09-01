@@ -1,8 +1,12 @@
 ﻿using FluentValidation;
+using Microsoft.AspNetCore.Http.HttpResults;
 using System.ComponentModel.DataAnnotations;
+using TechMarket_Productos.Application.Productos.Commands;
+using TechMarket_Productos.Application.Productos.Queries;
 using TechMarket_Productos.Data;
 using TechMarket_Productos.Exceptions;
 using TechMarket_Productos.Models;
+using Wolverine;
 
 namespace TechMarket_Productos.Endpoints
 {
@@ -15,69 +19,52 @@ namespace TechMarket_Productos.Endpoints
 				.WithTags("Productos");
 
 			//GET
-			grupo.MapGet("/", async (IProductoRepositorio repo) =>
+			grupo.MapGet("/", async (IMessageBus bus) =>
 			{
-				var productos = await repo.ObtenerTodos();
-				return Results.Ok(productos.Select(AProductoDTO));
+				var productos = await bus.InvokeAsync<IEnumerable<ProductoDTO>>(new ObtenerProductosQuery());
+				return Results.Ok(productos);
 			})
 			.WithName("ObtenerProductos")
 			.WithSummary("Lista todos los productos del catálogo");
 
 			//GET
-			grupo.MapGet("/{id:int}", async (int id, IProductoRepositorio repo) =>
+			grupo.MapGet("/{id:int}", async (int id, IMessageBus bus) =>
 			{
-				var producto = await repo.ObtenerPorId(id);
-				if (producto is null)
-					throw new RecursoNoEncontradoException($"No existe el producto con Id {id}");
-
-				return Results.Ok(AProductoDTO(producto));
+				var producto = await bus.InvokeAsync<ProductoDTO>(new ObtenerProductoPorIdQuery(id));
+				
+				return Results.Ok(producto);
 			})
 			.WithName("ObtenerProductoPorId")
 			.WithSummary("Obtiene un producto por su Id");
 
 			//POST
-			grupo.MapPost("/", async (CrearProductoDTO dto, IValidator<CrearProductoDTO> validador, IProductoRepositorio repo) =>
+			grupo.MapPost("/", async (CrearProductoDTO dto, IMessageBus bus) =>
 			{
-				await validador.ValidateAndThrowAsync(dto);
+				var comando = new CrearProductoCommand(dto.Nombre, dto.CategoriaId, dto.Precio, dto.Stock);
 
-				var nuevo = new Producto
-				{
-					Nombre = dto.Nombre,
-					CategoriaId = dto.CategoriaId,
-					Precio = dto.Precio,
-					Stock = dto.Stock
-				};
+				var creado = await bus.InvokeAsync<Producto>(comando);
 
-				var creado = await repo.Crear(nuevo);
-
-				return Results.Created($"/api/productos/{creado.Id}", AProductoDTO(creado)); ///++++ solo creado
+				return Results.Created($"/api/productos/{creado.Id}", creado);
 			})
 			.WithName("CrearProducto")
 			.WithSummary("Registra un nuevo producto en el catálogo");
 
 			//PUT
-			grupo.MapPut("/{id:int}", async (int id, ActualizarProductoDTO dto, IValidator<ActualizarProductoDTO> validador, IProductoRepositorio repo) =>
+			grupo.MapPut("/{id:int}", async (int id, ActualizarProductoDTO dto, IMessageBus bus) =>
 			{
-				await validador.ValidateAndThrowAsync(dto);
+				var comando = new ActualizarProductoCommand(id, dto.Nombre, dto.CategoriaId, dto.Precio, dto.Stock, dto.Activo);
+				await bus.InvokeAsync(comando);
 
-				var producto = new Producto
-				{
-					Nombre = dto.Nombre,
-					CategoriaId = dto.CategoriaId,
-					Precio = dto.Precio,
-					Stock = dto.Stock,
-					Activo = dto.Activo
-				};
-
-				return await repo.Actualizar(id, producto) ? Results.NoContent() : Results.NotFound(new { mensaje = $"Producto {id} no existe" });
+				return Results.NoContent();
 			})
 			.WithName("ActualizarProducto")
 			.WithSummary("Actualiza los datos de un producto existente");
 
 			//DELETE
-			grupo.MapDelete("/{id:int}", async (int id, IProductoRepositorio repo) =>
+			grupo.MapDelete("/{id:int}", async (int id, IMessageBus bus) =>
 			{
-				return await repo.Eliminar(id) ? Results.NoContent() : Results.NotFound(new { mensaje = $"Producto {id} no existe" });
+				await bus.InvokeAsync(new EliminarProductoCommand(id));
+				return Results.NoContent();
 			})
 			.WithName("EliminarProducto")
 			.WithSummary("Elimina un producto del catálogo");

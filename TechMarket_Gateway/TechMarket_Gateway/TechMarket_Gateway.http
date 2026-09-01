@@ -1,0 +1,6 @@
+@TechMarket_Gateway_HostAddress = http://localhost:5029
+
+GET {{TechMarket_Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
