@@ -18,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWolverine(opt =>
 {
 	opt.Discovery.IncludeAssembly(typeof(Program).Assembly);
+	opt.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
 });
 
 var conexion = builder.Configuration.GetConnectionString("TechMarketDb")

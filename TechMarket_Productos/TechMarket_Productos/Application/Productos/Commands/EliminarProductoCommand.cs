@@ -7,7 +7,7 @@ namespace TechMarket_Productos.Application.Productos.Commands
 
 	public static class EliminarProductoHandler
 	{
-		public static async Task Handler(EliminarProductoCommand command, IProductoRepositorio repositorio)
+		public static async Task Handle(EliminarProductoCommand command, IProductoRepositorio repositorio)
 		{
 			var eliminado = await repositorio.Eliminar(command.Id);
 			if (!eliminado)

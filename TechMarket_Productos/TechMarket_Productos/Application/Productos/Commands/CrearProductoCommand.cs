@@ -8,7 +8,7 @@ namespace TechMarket_Productos.Application.Productos.Commands
 	
 	public class CrearProductoHandler()
 	{
-		public static async Task<Producto> Handler(CrearProductoCommand comando, IValidator<CrearProductoDTO> validator, IProductoRepositorio repositorio)
+		public static async Task<Producto> Handle(CrearProductoCommand comando, IValidator<CrearProductoDTO> validator, IProductoRepositorio repositorio)
 		{
 			var dto = new CrearProductoDTO(comando.Nombre, comando.CategoriaId, comando.Precio, comando.Stock);
 			await validator.ValidateAndThrowAsync(dto);

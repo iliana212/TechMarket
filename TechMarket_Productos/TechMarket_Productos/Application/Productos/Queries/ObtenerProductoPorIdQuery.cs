@@ -8,7 +8,7 @@ namespace TechMarket_Productos.Application.Productos.Queries
 
 	public static class ObtenerProductoPorIdHandler
 	{
-		public static async Task<ProductoDTO> Handler(ObtenerProductoPorIdQuery consulta, IProductoRepositorio repositorio)
+		public static async Task<ProductoDTO> Handle(ObtenerProductoPorIdQuery consulta, IProductoRepositorio repositorio)
 		{
 			var producto = await repositorio.ObtenerPorId(consulta.Id);
 			if (producto is null)

@@ -44,7 +44,7 @@ namespace TechMarket_Productos.Endpoints
 
 				var creado = await bus.InvokeAsync<Producto>(comando);
 
-				return Results.Created($"/api/productos/{creado.Id}", creado);
+				return Results.Created($"/api/productos/{creado.Id}", AProductoDTO(creado));
 			})
 			.WithName("CrearProducto")
 			.WithSummary("Registra un nuevo producto en el catálogo");

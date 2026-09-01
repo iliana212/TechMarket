@@ -9,7 +9,7 @@ namespace TechMarket_Productos.Application.Productos.Commands
 
 	public class ActualizarProductoHandler()
 	{
-		public static async Task Handler(ActualizarProductoCommand comando, IValidator<ActualizarProductoDTO> validator, IProductoRepositorio repositorio)
+		public static async Task Handle(ActualizarProductoCommand comando, IValidator<ActualizarProductoDTO> validator, IProductoRepositorio repositorio)
 		{
 			var dto = new ActualizarProductoDTO(comando.Nombre, comando.CategoriaId, comando.Precio, comando.Stock, comando.Activo);
 			await validator.ValidateAndThrowAsync(dto);
