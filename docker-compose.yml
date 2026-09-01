@@ -1,0 +1,89 @@
+services:
+
+  # ---------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: techmarket-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: TechMarket
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - techmarket_postgres_data:/var/lib/postgresql/data
+    networks:
+      - techmarket-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d TechMarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ----------------------------------------------------------
+  productos:
+    build:
+      context: ./TechMarket_Productos/TechMarket_Productos
+      dockerfile: Dockerfile
+    container_name: techmarket-productos
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__TechMarketDb: "Host=postgres;Port=5432;Database=TechMarket;Username=${DB_USER};Password=${DB_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5230:8080"
+    networks:
+      - techmarket-net
+
+  # ----------------------------------------------------------
+  pedidos:
+    build:
+      context: ./TechMarket_Pedidos/TechMarket_Pedidos
+      dockerfile: Dockerfile
+    container_name: techmarket-pedidos
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__TechMarketPedidos: "Host=postgres;Port=5432;Database=TechMarketPedidos;Username=${DB_USER};Password=${DB_PASSWORD}"
+      Servicios__Productos__BaseUrl: "http://productos:8080"
+    depends_on:
+      - productos
+    ports:
+      - "5121:8080"
+    networks:
+      - techmarket-net
+
+  # ----------------------------------------------------------
+  gateway:
+    build:
+      context: ./TechMarket_Gateway/TechMarket_Gateway
+      dockerfile: Dockerfile
+    container_name: techmarket-gateway
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ReverseProxy__Clusters__cluster-productos__Destinations__destino-1__Address: "http://productos:8080"
+      ReverseProxy__Clusters__cluster-pedidos__Destinations__destino-1__Address: "http://pedidos:8080"
+    depends_on:
+      - productos
+      - pedidos
+    ports:
+      - "5029:8080"
+    networks:
+      - techmarket-net
+
+# ----------------------------------------------------------
+networks:
+  techmarket-net:
+    driver: bridge
+
+volumes:
+  techmarket_postgres_data:

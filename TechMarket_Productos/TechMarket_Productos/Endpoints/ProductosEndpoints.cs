@@ -47,7 +47,8 @@ namespace TechMarket_Productos.Endpoints
 				return Results.Created($"/api/productos/{creado.Id}", AProductoDTO(creado));
 			})
 			.WithName("CrearProducto")
-			.WithSummary("Registra un nuevo producto en el catálogo");
+			.WithSummary("Registra un nuevo producto en el catálogo")
+			.RequireAuthorization("AdminOnly");
 
 			//PUT
 			grupo.MapPut("/{id:int}", async (int id, ActualizarProductoDTO dto, IMessageBus bus) =>
@@ -58,7 +59,8 @@ namespace TechMarket_Productos.Endpoints
 				return Results.NoContent();
 			})
 			.WithName("ActualizarProducto")
-			.WithSummary("Actualiza los datos de un producto existente");
+			.WithSummary("Actualiza los datos de un producto existente")
+			.RequireAuthorization("AdminOnly");
 
 			//DELETE
 			grupo.MapDelete("/{id:int}", async (int id, IMessageBus bus) =>
@@ -67,7 +69,8 @@ namespace TechMarket_Productos.Endpoints
 				return Results.NoContent();
 			})
 			.WithName("EliminarProducto")
-			.WithSummary("Elimina un producto del catálogo");
+			.WithSummary("Elimina un producto del catálogo")
+			.RequireAuthorization("AdminOnly");
 
 		}
 

@@ -47,7 +47,8 @@ namespace TechMarket_Productos.Endpoints
 				return Results.Created($"/api/categorias/{creada.Id}", ACategoriaDTO(creada));
 			})
 			.WithName("CrearCategoria")
-			.WithSummary("Registra una nueva categoría");
+			.WithSummary("Registra una nueva categoría")
+			.RequireAuthorization("AdminOnly");
 
 			//PUT
 			grupo.MapPut("/{id:int}", async (int id, CrearCategoriaDTO dto, IValidator<CrearCategoriaDTO> validador, ICategoriaRepositorio repo) =>
@@ -63,7 +64,8 @@ namespace TechMarket_Productos.Endpoints
 				return await repo.Actualizar(id, categoria) ? Results.NoContent() : Results.NotFound(new { mensaje = $"Categoria {id} no existe" });
 			})
 			.WithName("ActualizarCategoria")
-			.WithSummary("Actualiza los datos de una categoria existente");
+			.WithSummary("Actualiza los datos de una categoria existente")
+			.RequireAuthorization("AdminOnly");
 		}
 
 
