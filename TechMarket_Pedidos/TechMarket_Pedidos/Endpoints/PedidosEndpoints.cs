@@ -1,7 +1,9 @@
 ﻿using TechMarket_Pedidos.Clients;
 using TechMarket_Pedidos.Data;
+using TechMarket_Pedidos.Events;
 using TechMarket_Pedidos.Exceptions;
 using TechMarket_Pedidos.Models;
+using Wolverine;
 
 namespace TechMarket_Pedidos.Endpoints
 {
@@ -32,7 +34,7 @@ namespace TechMarket_Pedidos.Endpoints
 			.WithName("ObtenerPedidoPorId").WithSummary("Obtiene un pedido por su Id");
 
 			//POST
-			grupo.MapPost("/", async (CrearPedidoDTO dto, IProductosClient client, IPedidoRepositorio repo, CancellationToken cancellation) =>
+			grupo.MapPost("/", async (CrearPedidoDTO dto, IProductosClient client, IPedidoRepositorio repo, CancellationToken cancellation, IMessageBus bus) =>
 			{
 				if (string.IsNullOrEmpty(dto.ClienteNombre))
 					return Results.BadRequest(new { mensaje = "Nombre de cliente obligatorio" });
@@ -72,6 +74,12 @@ namespace TechMarket_Pedidos.Endpoints
 				pedido.Total = pedido.Items.Sum(i => i.Subtotal);
 
 				var creado = await repo.Crear(pedido);
+
+				await bus.PublishAsync(new PedidoConfirmadoEvent(
+					creado.Id, 
+					creado.ClienteNombre, 
+					creado.Items.Select(s => new ItemConfirmadoEvent(s.ProductoId, s.Cantidad)).ToList()));
+
 				return Results.Created($"/api/pedidos/{creado.Id}", APedidoDTO(creado));
 			})
 			.WithName("CrearPedido").WithSummary("Crea un nuevo pedido");

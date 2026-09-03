@@ -10,15 +10,26 @@ using TechMarket_Productos.Data;
 using TechMarket_Productos.Endpoints;
 using TechMarket_Productos.Middleware;
 using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+var cadenaRabbitMq = builder.Configuration["RabbitMq:ConnectionString"] ?? throw new InvalidOperationException("Falta conexion a Rabbit");
+
+
+
 builder.Host.UseWolverine(opt =>
 {
 	opt.Discovery.IncludeAssembly(typeof(Program).Assembly);
 	opt.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
+
+	opt.UseRabbitMq(new Uri(cadenaRabbitMq))
+	.AutoProvision().BindExchange("pedido-confirmado").ToQueue("productos.pedido-confirmado");
+
+	opt.ListenToRabbitQueue("productos.pedido-confirmado");
+
 });
 
 var conexion = builder.Configuration.GetConnectionString("TechMarketDb")

@@ -28,6 +28,16 @@ namespace TechMarket_Productos.Data
 			return producto;
 		}
 
+		public async Task<bool> DescontarStock(int productoId, int cantidad)
+		{
+			var producto = await context.Productos.FirstOrDefaultAsync(x => x.Id == productoId);
+			if (producto is null) return false;
+
+			producto.Stock = Math.Max(0, producto.Stock - cantidad);
+			await context.SaveChangesAsync();
+			return true;
+		}
+
 		public async Task<bool> Eliminar(int id)
 		{
 			var existe = await context.Productos.FirstOrDefaultAsync(x => x.Id == id);

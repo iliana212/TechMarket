@@ -1,6 +1,26 @@
 services:
 
   # ---------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: techmarket-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672" #protocolo AMQP - lo usan ms-productos y ms-pedidos
+      - "15672:15672" #panel de administracion web usuario/clave guest/guest
+    networks:
+      - techmarket-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------
+
   postgres:
     image: postgres:16-alpine
     container_name: techmarket-postgres
@@ -31,12 +51,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__TechMarketDb: "Host=postgres;Port=5432;Database=TechMarket;Username=${DB_USER};Password=${DB_PASSWORD}"
+      RabbitMq__ConnectionString: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: ${JWT_ISSUER}
       Jwt__Audience: ${JWT_AUDIENCE}
       Jwt__ExpiraMinutos: ${JWT_EXPIRA_MINUTOS}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq: 
         condition: service_healthy
     ports:
       - "5230:8080"
@@ -54,8 +77,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__TechMarketPedidos: "Host=postgres;Port=5432;Database=TechMarketPedidos;Username=${DB_USER};Password=${DB_PASSWORD}"
       Servicios__Productos__BaseUrl: "http://productos:8080"
+      RabbitMq__ConnectionString: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
     depends_on:
-      - productos
+      productos:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "5121:8080"
     networks:

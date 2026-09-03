@@ -9,5 +9,6 @@ namespace TechMarket_Productos.Data
 		Task<bool> Eliminar(int id);
 		Task<Producto?> ObtenerPorId(int id);
 		Task<IEnumerable<Producto>> ObtenerTodos();
+		Task<bool> DescontarStock(int productoId, int cantidad);
 	}
 }

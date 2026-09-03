@@ -4,14 +4,26 @@ using Polly;
 using TechMarket_Pedidos.Clients;
 using TechMarket_Pedidos.Data;
 using TechMarket_Pedidos.Endpoints;
+using TechMarket_Pedidos.Events;
 using TechMarket_Pedidos.Middleware;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var cadenaRabbitMq = builder.Configuration["RabbitMq:ConnectionString"] ?? throw new InvalidOperationException("Falta conexion a Rabbit");
 
 var urlProductos = builder.Configuration["Servicios:Productos:BaseUrl"] ?? throw new InvalidOperationException("Falta de Url para conectar ");
 
 var conexion = builder.Configuration.GetConnectionString("TechMarketPedidos")
    ?? throw new InvalidOperationException("Falta cadena de conexion");
+
+builder.Host.UseWolverine(opt =>
+{
+	opt.UseRabbitMq(new Uri(cadenaRabbitMq)).AutoProvision();
+
+	opt.PublishMessage<PedidoConfirmadoEvent>().ToRabbitExchange("pedido-confirmado");
+});
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(conexion));
 
