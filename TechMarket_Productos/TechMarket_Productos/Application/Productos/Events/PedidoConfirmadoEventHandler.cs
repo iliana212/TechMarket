@@ -16,8 +16,8 @@ namespace TechMarket_Productos.Application.Productos.Events
 			
 				if (!actualizado)
 				{
-					logger.LogWarning("No se pudo descontar stock del producto {ProductoId} (pedido {PedidoId}): no existe",
-						item.ProductoId, evento.PedidoId);
+					logger.LogWarning("No se pudo descontar stock del producto {ProductoId} (pedido {PedidoId}): no existe o el stock ya no alcanza",
+ 						item.ProductoId, evento.PedidoId);
 				}			
 			}	
 		}

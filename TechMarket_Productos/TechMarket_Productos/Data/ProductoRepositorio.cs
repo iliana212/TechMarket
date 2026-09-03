@@ -30,12 +30,11 @@ namespace TechMarket_Productos.Data
 
 		public async Task<bool> DescontarStock(int productoId, int cantidad)
 		{
-			var producto = await context.Productos.FirstOrDefaultAsync(x => x.Id == productoId);
-			if (producto is null) return false;
-
-			producto.Stock = Math.Max(0, producto.Stock - cantidad);
-			await context.SaveChangesAsync();
-			return true;
+			var filasAfectadas = await context.Productos
+				.Where(p => p.Id == productoId && p.Stock >= cantidad)
+				.ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - cantidad));
+			
+           return filasAfectadas > 0;
 		}
 
 		public async Task<bool> Eliminar(int id)
