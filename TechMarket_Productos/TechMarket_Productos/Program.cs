@@ -67,7 +67,7 @@ builder.Services.AddSwaggerGen(options =>
 	{
 		Title = "TechMarket - Microservicios de Productos",
 		Version = "v1",
-		Description = "Curso de Microservicios con .Net y Azure"
+		Description = "Curso de Microservicios con .Net"
 	});
 
 	options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

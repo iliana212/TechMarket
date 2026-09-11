@@ -65,7 +65,7 @@ builder.Services.AddSwaggerGen(options =>
 	{
 		Title = "TechMarket - Microservicios de Pedidos",
 		Version = "v1",
-		Description = "Curso de Microservicios con .Net y Azure"
+		Description = "Curso de Microservicios con .Net"
 	});
 });
 
