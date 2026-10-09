@@ -1,6 +1,7 @@
 using FluentValidation;
 using ImTools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -8,6 +9,7 @@ using System.Text;
 using TechMarket_Productos.Auth;
 using TechMarket_Productos.Data;
 using TechMarket_Productos.Endpoints;
+using TechMarket_Productos.Health;
 using TechMarket_Productos.Middleware;
 using Wolverine;
 using Wolverine.RabbitMQ;
@@ -17,8 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 var cadenaRabbitMq = builder.Configuration["RabbitMq:ConnectionString"] ?? throw new InvalidOperationException("Falta conexion a Rabbit");
-
-
 
 builder.Host.UseWolverine(opt =>
 {
@@ -44,6 +44,9 @@ builder.Services.AddSingleton<IEmisorTokenJWT, EmisorTokenJWT>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+builder.Services.AddHealthChecks()
+   .AddCheck<DatabaseHealthCheck>("postgres", tags: ["ready"]);
 
 var jwt = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(opts =>
@@ -116,6 +119,9 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.MapGet("/", () => Results.Ok(new
 {

@@ -65,6 +65,12 @@ services:
       - "5230:8080"
     networks:
       - techmarket-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # ----------------------------------------------------------
   pedidos:
@@ -80,13 +86,19 @@ services:
       RabbitMq__ConnectionString: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
     depends_on:
       productos:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     ports:
       - "5121:8080"
     networks:
       - techmarket-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # ----------------------------------------------------------
   gateway:
@@ -100,12 +112,20 @@ services:
       ReverseProxy__Clusters__cluster-productos__Destinations__destino-1__Address: "http://productos:8080"
       ReverseProxy__Clusters__cluster-pedidos__Destinations__destino-1__Address: "http://pedidos:8080"
     depends_on:
-      - productos
-      - pedidos
+      productos:
+        condition: service_healthy
+      pedidos:
+        condition: service_healthy
     ports:
       - "5029:8080"
     networks:
       - techmarket-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 # ----------------------------------------------------------
 networks:

@@ -57,11 +57,13 @@ Más allá del "qué" está construido, esto es el "por qué" detrás de las dec
 - **Actualizaciones atómicas a nivel de base de datos** — el descuento de stock se resuelve con un único `UPDATE ... WHERE Stock >= @cantidad` (EF Core `ExecuteUpdateAsync`), eliminando condiciones de carrera bajo escritura concurrente en vez de depender de lecturas y escrituras separadas en memoria.
 - **Contratos de mensajería desacoplados** — los eventos usan `[MessageIdentity]` en vez de compartir un tipo de C# entre proyectos, permitiendo que cada microservicio evolucione su propia copia del contrato sin depender del ensamblado del otro.
 - **Contenerización completa** — Dockerfiles multi-stage (build con SDK, runtime liviano en la imagen final) y orquestación con Docker Compose; todo el sistema (Gateway, 2 microservicios, PostgreSQL, RabbitMQ) se levanta con un solo comando.
+- **Health checks de liveness y readiness** — cada servicio expone `/health/live` (el proceso responde) y `/health/ready` (además puede hablar con su base de datos); Docker Compose los usa como `healthcheck`, así que Pedidos y el Gateway solo arrancan cuando Productos está realmente listo, no solo "iniciado".
+- **Rate limiting en el Gateway** — límite por IP con respuesta `429` y header `Retry-After`: 100 peticiones por minuto en general y una política más estricta (10 por minuto) en el login para frenar ataques de fuerza bruta.
 - **Manejo de secretos fuera del control de versiones** — credenciales y claves de firma JWT parametrizadas vía `.env` (nunca commiteadas), con `appsettings.json` conteniendo solo placeholders seguros.
 
 ## Stack técnico
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `Docker` / `Docker Compose`
 
 ## Cómo correrlo localmente
 
@@ -80,6 +82,7 @@ docker-compose up -d --build
 | Swagger — Productos | http://localhost:5230/swagger |
 | Swagger — Pedidos | http://localhost:5121/swagger |
 | RabbitMQ Management | http://localhost:15672 |
+| Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
 
 ## Capturas
 

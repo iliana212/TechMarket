@@ -59,11 +59,13 @@ Beyond the "what" was built, this is the "why" behind the key decisions:
 - **Atomic database-level updates** — stock decrements are resolved with a single `UPDATE ... WHERE Stock >= @quantity` (EF Core `ExecuteUpdateAsync`), eliminating race conditions under concurrent writes instead of relying on separate in-memory reads and writes.
 - **Decoupled messaging contracts** — events use `[MessageIdentity]` instead of sharing a C# type across projects, letting each microservice evolve its own copy of the contract without depending on the other's assembly.
 - **Full containerization** — multi-stage Dockerfiles (SDK for build, lightweight runtime for the final image) and orchestration with Docker Compose; the entire system (Gateway, 2 microservices, PostgreSQL, RabbitMQ) spins up with a single command.
+- **Liveness and readiness health checks** — every service exposes `/health/live` (the process responds) and `/health/ready` (it can also reach its database); Docker Compose uses them as `healthcheck`, so Orders and the Gateway only start once Products is actually ready, not just "started".
+- **Rate limiting at the Gateway** — per-IP limits returning `429` with a `Retry-After` header: 100 requests per minute in general, plus a stricter policy (10 per minute) on login to slow down brute-force attacks.
 - **Secrets kept out of version control** — credentials and JWT signing keys parameterized via `.env` (never committed), with `appsettings.json` containing only safe placeholders.
 
 ## Tech stack
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `Docker` / `Docker Compose`
 
 ## Running it locally
 
@@ -82,6 +84,7 @@ docker-compose up -d --build
 | Swagger — Products (ms-productos) | http://localhost:5230/swagger |
 | Swagger — Orders (ms-pedidos) | http://localhost:5121/swagger |
 | RabbitMQ Management | http://localhost:15672 |
+| Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
 
 ## Screenshots
 

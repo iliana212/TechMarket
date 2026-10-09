@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
@@ -5,6 +6,7 @@ using TechMarket_Pedidos.Clients;
 using TechMarket_Pedidos.Data;
 using TechMarket_Pedidos.Endpoints;
 using TechMarket_Pedidos.Events;
+using TechMarket_Pedidos.Health;
 using TechMarket_Pedidos.Middleware;
 using Wolverine;
 using Wolverine.RabbitMQ;
@@ -58,6 +60,9 @@ builder.Services.AddScoped<IPedidoRepositorio, PedidoRepositorio>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+builder.Services.AddHealthChecks()
+   .AddCheck<DatabaseHealthCheck>("postgres", tags: ["ready"]);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -91,6 +96,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.MapGet("/", () => Results.Ok(new
 {
