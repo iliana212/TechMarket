@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using System.Net.NetworkInformation;
 using System.Threading.RateLimiting;
+using TechMarket_Gateway.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +62,8 @@ builder.Services.AddRateLimiter(options =>
         }, cancellationToken);
 	};
 });
+
+builder.AddObservability();
 
 var app = builder.Build();
 

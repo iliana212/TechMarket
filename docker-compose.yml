@@ -20,7 +20,6 @@ services:
       retries: 10
 
   # ---------------------------------------------------------
-
   postgres:
     image: postgres:16-alpine
     container_name: techmarket-postgres
@@ -50,6 +49,8 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      OTEL_SERVICE_NAME: ms-productos
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       ConnectionStrings__TechMarketDb: "Host=postgres;Port=5432;Database=TechMarket;Username=${DB_USER};Password=${DB_PASSWORD}"
       RabbitMq__ConnectionString: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
       Jwt__Key: ${JWT_KEY}
@@ -81,6 +82,8 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      OTEL_SERVICE_NAME: ms-pedidos
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       ConnectionStrings__TechMarketPedidos: "Host=postgres;Port=5432;Database=TechMarketPedidos;Username=${DB_USER};Password=${DB_PASSWORD}"
       Servicios__Productos__BaseUrl: "http://productos:8080"
       RabbitMq__ConnectionString: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
@@ -109,6 +112,8 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      OTEL_SERVICE_NAME: ms-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       ReverseProxy__Clusters__cluster-productos__Destinations__destino-1__Address: "http://productos:8080"
       ReverseProxy__Clusters__cluster-pedidos__Destinations__destino-1__Address: "http://pedidos:8080"
     depends_on:
@@ -126,6 +131,16 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  # ----------------------------------------------------------
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    container_name: techmarket-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686" #interfaz web de Jaeger para ver las trazas
+    networks:
+      - techmarket-net
 
 # ----------------------------------------------------------
 networks:

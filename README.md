@@ -24,6 +24,7 @@ graph TB
     DBProd[("PostgreSQL<br/><sub>TechMarket</sub>")]
     DBPed[("PostgreSQL<br/><sub>TechMarketPedidos</sub>")]
     Rabbit{{"RabbitMQ<br/><sub>pedido.confirmado</sub>"}}
+    Jaeger["Jaeger<br/><sub>trazas distribuidas</sub>"]
 
     Cliente --> Gateway
     Gateway --> Productos
@@ -33,6 +34,9 @@ graph TB
     Pedidos --- DBPed
     Pedidos -. "publica evento" .-> Rabbit
     Rabbit -. "descuenta stock" .-> Productos
+    Gateway -. "trazas OTLP" .-> Jaeger
+    Productos -.-> Jaeger
+    Pedidos -.-> Jaeger
 ```
 
 Cada microservicio es dueño de su propia base de datos — ninguno accede directamente a las tablas del otro. La comunicación entre ellos combina **dos estrategias según la necesidad real**: síncrona (HTTP) cuando Pedidos necesita una respuesta inmediata para validar stock, y asíncrona (eventos) cuando Productos solo necesita enterarse eventualmente de que un pedido se confirmó.
@@ -59,11 +63,12 @@ Más allá del "qué" está construido, esto es el "por qué" detrás de las dec
 - **Contenerización completa** — Dockerfiles multi-stage (build con SDK, runtime liviano en la imagen final) y orquestación con Docker Compose; todo el sistema (Gateway, 2 microservicios, PostgreSQL, RabbitMQ) se levanta con un solo comando.
 - **Health checks de liveness y readiness** — cada servicio expone `/health/live` (el proceso responde) y `/health/ready` (además puede hablar con su base de datos); Docker Compose los usa como `healthcheck`, así que Pedidos y el Gateway solo arrancan cuando Productos está realmente listo, no solo "iniciado".
 - **Rate limiting en el Gateway** — límite por IP con respuesta `429` y header `Retry-After`: 100 peticiones por minuto en general y una política más estricta (10 por minuto) en el login para frenar ataques de fuerza bruta.
+- **Observabilidad con trazas distribuidas** — OpenTelemetry instrumenta Gateway, Productos y Pedidos y exporta las trazas a Jaeger: una sola petición se ve de punta a punta (Gateway → Pedidos → Productos por HTTP, consultas SQL, y el evento de RabbitMQ que Productos consume). Los logs incluyen `TraceId`/`SpanId` para correlacionarlos con la traza.
 - **Manejo de secretos fuera del control de versiones** — credenciales y claves de firma JWT parametrizadas vía `.env` (nunca commiteadas), con `appsettings.json` conteniendo solo placeholders seguros.
 
 ## Stack técnico
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
 
 ## Cómo correrlo localmente
 
@@ -82,11 +87,10 @@ docker-compose up -d --build
 | Swagger — Productos | http://localhost:5230/swagger |
 | Swagger — Pedidos | http://localhost:5121/swagger |
 | RabbitMQ Management | http://localhost:15672 |
+| Jaeger (trazas) | http://localhost:16686 |
 | Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
 
 ## Capturas
-
-> Agrega tus propias capturas en una carpeta `docs/screenshots/` del repo y actualiza las rutas de abajo — quedan listas para renderizarse en GitHub en cuanto subas las imágenes.
 
 | Swagger — Productos | Swagger — Pedidos |
 |---|---|
@@ -95,6 +99,10 @@ docker-compose up -d --build
 | Autenticación JWT | Panel de RabbitMQ |
 |---|---|
 | ![Login JWT](docs/screenshots/login-jwt.png) | ![RabbitMQ Management](docs/screenshots/rabbitmq-management.png) |
+
+| Traza distribuida en Jaeger | |
+|---|---|
+| ![Jaeger](docs/screenshots/jaeger.png) | ![Jaeger trace](docs/screenshots/jaeger-trace.png) |
 
 ## Contexto
 

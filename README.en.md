@@ -26,6 +26,7 @@ graph TB
     DBProd[("PostgreSQL<br/><sub>TechMarket</sub>")]
     DBPed[("PostgreSQL<br/><sub>TechMarketPedidos</sub>")]
     Rabbit{{"RabbitMQ<br/><sub>pedido.confirmado</sub>"}}
+    Jaeger["Jaeger<br/><sub>distributed tracing</sub>"]
 
     Client --> Gateway
     Gateway --> Productos
@@ -35,6 +36,9 @@ graph TB
     Pedidos --- DBPed
     Pedidos -. "publishes event" .-> Rabbit
     Rabbit -. "decrements stock" .-> Productos
+    Gateway -. "OTLP traces" .-> Jaeger
+    Productos -.-> Jaeger
+    Pedidos -.-> Jaeger
 ```
 
 Each microservice owns its own database — none of them accesses another's tables directly. Communication between them combines **two strategies depending on the actual need**: synchronous (HTTP) when the orders service needs an immediate response to validate stock, and asynchronous (events) when the products service only needs to eventually find out that an order was confirmed.
@@ -61,11 +65,12 @@ Beyond the "what" was built, this is the "why" behind the key decisions:
 - **Full containerization** — multi-stage Dockerfiles (SDK for build, lightweight runtime for the final image) and orchestration with Docker Compose; the entire system (Gateway, 2 microservices, PostgreSQL, RabbitMQ) spins up with a single command.
 - **Liveness and readiness health checks** — every service exposes `/health/live` (the process responds) and `/health/ready` (it can also reach its database); Docker Compose uses them as `healthcheck`, so Orders and the Gateway only start once Products is actually ready, not just "started".
 - **Rate limiting at the Gateway** — per-IP limits returning `429` with a `Retry-After` header: 100 requests per minute in general, plus a stricter policy (10 per minute) on login to slow down brute-force attacks.
+- **Observability with distributed tracing** — OpenTelemetry instruments the Gateway, Products and Orders services and exports traces to Jaeger: a single request can be followed end to end (Gateway → Orders → Products over HTTP, SQL queries, and the RabbitMQ event that Products consumes). Logs carry `TraceId`/`SpanId` so they can be correlated with the trace.
 - **Secrets kept out of version control** — credentials and JWT signing keys parameterized via `.env` (never committed), with `appsettings.json` containing only safe placeholders.
 
 ## Tech stack
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
 
 ## Running it locally
 
@@ -84,11 +89,10 @@ docker-compose up -d --build
 | Swagger — Products (ms-productos) | http://localhost:5230/swagger |
 | Swagger — Orders (ms-pedidos) | http://localhost:5121/swagger |
 | RabbitMQ Management | http://localhost:15672 |
+| Jaeger (traces) | http://localhost:16686 |
 | Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
 
 ## Screenshots
-
-> Add your own screenshots to a `docs/screenshots/` folder in the repo and update the paths below — they'll render on GitHub as soon as the images are uploaded.
 
 | Swagger — Products | Swagger — Orders |
 |---|---|
@@ -97,6 +101,10 @@ docker-compose up -d --build
 | JWT Authentication | RabbitMQ Dashboard |
 |---|---|
 | ![JWT Login](docs/screenshots/login-jwt.png) | ![RabbitMQ Management](docs/screenshots/rabbitmq-management.png) |
+
+| Jaeger - Distributed Tracing | |
+|---|---|
+| ![Jaeger](docs/screenshots/jaeger.png) | ![Jaeger trace](docs/screenshots/jaeger-trace.png) |
 
 ## Background
 

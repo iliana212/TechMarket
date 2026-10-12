@@ -8,6 +8,7 @@ using TechMarket_Pedidos.Endpoints;
 using TechMarket_Pedidos.Events;
 using TechMarket_Pedidos.Health;
 using TechMarket_Pedidos.Middleware;
+using TechMarket_Pedidos.Observability;
 using Wolverine;
 using Wolverine.RabbitMQ;
 
@@ -62,6 +63,8 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddHealthChecks()
    .AddCheck<DatabaseHealthCheck>("postgres", tags: ["ready"]);
+
+builder.AddObservability();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

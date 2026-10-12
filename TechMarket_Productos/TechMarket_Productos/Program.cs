@@ -11,6 +11,7 @@ using TechMarket_Productos.Data;
 using TechMarket_Productos.Endpoints;
 using TechMarket_Productos.Health;
 using TechMarket_Productos.Middleware;
+using TechMarket_Productos.Observability;
 using Wolverine;
 using Wolverine.RabbitMQ;
 
@@ -47,6 +48,8 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddHealthChecks()
    .AddCheck<DatabaseHealthCheck>("postgres", tags: ["ready"]);
+
+builder.AddObservability();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(opts =>
@@ -90,10 +93,8 @@ builder.Services.AddSwaggerGen(options =>
 
 });
 
-builder.Services.AddAuthorization(option =>
-{
-	option.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-});
+builder.Services.AddAuthorizationBuilder()
+	.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 
 var app = builder.Build();
 
