@@ -4,7 +4,7 @@
 
 Sistema de e-commerce construido como **caso real de aprendizaje** de arquitectura de microservicios con .NET 10, aplicando de forma incremental patrones de comunicación síncrona y asíncrona, seguridad, resiliencia y contenerización — no un tutorial copiado, sino un sistema depurado y corregido pieza por pieza hasta dejarlo funcionando end-to-end.
 
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white) ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Wolverine-FF6600?logo=rabbitmq&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![YARP](https://img.shields.io/badge/API%20Gateway-YARP-5C2D91)
+[![CI](https://github.com/iliana212/TechMarket/actions/workflows/ci.yml/badge.svg)](https://github.com/iliana212/TechMarket/actions/workflows/ci.yml) ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white) ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Wolverine-FF6600?logo=rabbitmq&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![YARP](https://img.shields.io/badge/API%20Gateway-YARP-5C2D91)
 
 ## En un vistazo
 
@@ -64,6 +64,7 @@ Más allá del "qué" está construido, esto es el "por qué" detrás de las dec
 - **Health checks de liveness y readiness** — cada servicio expone `/health/live` (el proceso responde) y `/health/ready` (además puede hablar con su base de datos); Docker Compose los usa como `healthcheck`, así que Pedidos y el Gateway solo arrancan cuando Productos está realmente listo, no solo "iniciado".
 - **Rate limiting en el Gateway** — límite por IP con respuesta `429` y header `Retry-After`: 100 peticiones por minuto en general y una política más estricta (10 por minuto) en el login para frenar ataques de fuerza bruta.
 - **Observabilidad con trazas distribuidas** — OpenTelemetry instrumenta Gateway, Productos y Pedidos y exporta las trazas a Jaeger: una sola petición se ve de punta a punta (Gateway → Pedidos → Productos por HTTP, consultas SQL, y el evento de RabbitMQ que Productos consume). Los logs incluyen `TraceId`/`SpanId` para correlacionarlos con la traza.
+- **Integración continua con GitHub Actions** — en cada push y pull request compila los tres microservicios, construye las imágenes, levanta todo el sistema con Docker Compose, espera a que los health checks pasen y ejecuta pruebas de humo contra el Gateway (login, catálogo público y rechazo de escrituras sin token).
 - **Manejo de secretos fuera del control de versiones** — credenciales y claves de firma JWT parametrizadas vía `.env` (nunca commiteadas), con `appsettings.json` conteniendo solo placeholders seguros.
 
 ## Stack técnico

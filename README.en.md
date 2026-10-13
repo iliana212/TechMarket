@@ -4,7 +4,7 @@
 
 An e-commerce system built as a **hands-on microservices architecture project** in .NET 10, incrementally applying synchronous and asynchronous communication patterns, security, resilience, and containerization — not a copied tutorial, but a system debugged and fixed piece by piece until it actually worked end-to-end.
 
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white) ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Wolverine-FF6600?logo=rabbitmq&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![YARP](https://img.shields.io/badge/API%20Gateway-YARP-5C2D91)
+[![CI](https://github.com/iliana212/TechMarket/actions/workflows/ci.yml/badge.svg)](https://github.com/iliana212/TechMarket/actions/workflows/ci.yml) ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white) ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Wolverine-FF6600?logo=rabbitmq&logoColor=white) ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens) ![YARP](https://img.shields.io/badge/API%20Gateway-YARP-5C2D91)
 
 *Service and database names below (`ms-pedidos`, `TechMarketPedidos`, etc.) are kept as-is from the actual codebase — "pedidos" is Spanish for "orders".*
 
@@ -66,6 +66,7 @@ Beyond the "what" was built, this is the "why" behind the key decisions:
 - **Liveness and readiness health checks** — every service exposes `/health/live` (the process responds) and `/health/ready` (it can also reach its database); Docker Compose uses them as `healthcheck`, so Orders and the Gateway only start once Products is actually ready, not just "started".
 - **Rate limiting at the Gateway** — per-IP limits returning `429` with a `Retry-After` header: 100 requests per minute in general, plus a stricter policy (10 per minute) on login to slow down brute-force attacks.
 - **Observability with distributed tracing** — OpenTelemetry instruments the Gateway, Products and Orders services and exports traces to Jaeger: a single request can be followed end to end (Gateway → Orders → Products over HTTP, SQL queries, and the RabbitMQ event that Products consumes). Logs carry `TraceId`/`SpanId` so they can be correlated with the trace.
+- **Continuous integration with GitHub Actions** — on every push and pull request it builds the three microservices, builds the images, brings the whole system up with Docker Compose, waits for the health checks to pass, and runs smoke tests against the Gateway (login, public catalog, and rejection of unauthenticated writes).
 - **Secrets kept out of version control** — credentials and JWT signing keys parameterized via `.env` (never committed), with `appsettings.json` containing only safe placeholders.
 
 ## Tech stack
