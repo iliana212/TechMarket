@@ -100,7 +100,7 @@ docker-compose up -d --build
 |---|---|
 | ![Login JWT](docs/screenshots/login-jwt.png) | ![RabbitMQ Management](docs/screenshots/rabbitmq-management.png) |
 
-| Traza distribuida en Jaeger | |
+| Jaeger - Búsqueda de trazas | Detalle de una traza |
 |---|---|
 | ![Jaeger](docs/screenshots/jaeger.png) | ![Jaeger trace](docs/screenshots/jaeger-trace.png) |
 
