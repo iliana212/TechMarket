@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Si llega un push nuevo a la misma rama, cancela la ejecución anterior que sigue en curso
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------
+  # 1) Compila cada microservicio por separado (falla rápido y dice cuál se rompió)
+  # ---------------------------------------------------------------
+  build:
+    name: Compilar ${{ matrix.proyecto }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        proyecto:
+          - TechMarket_Productos/TechMarket_Productos
+          - TechMarket_Pedidos/TechMarket_Pedidos
+          - TechMarket_Gateway/TechMarket_Gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cachear paquetes NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restaurar dependencias
+        run: dotnet restore ${{ matrix.proyecto }}
+
+      - name: Compilar (Release)
+        run: dotnet build ${{ matrix.proyecto }} --configuration Release --no-restore
+
+  # ---------------------------------------------------------------
+  # 2) Construye las imágenes, levanta TODO el sistema con docker compose
+  #    y ejecuta pruebas de humo contra el Gateway
+  # ---------------------------------------------------------------
+  docker:
+    name: Docker Compose + pruebas de humo
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar variables de entorno (valores de ejemplo, solo para CI)
+        run: cp .env.example .env
+
+      - name: Construir imágenes
+        run: docker compose build
+
+      - name: Levantar el sistema y esperar a que todos los servicios estén saludables
+        run: docker compose up -d --wait --wait-timeout 240
+
+      - name: Pruebas de humo
+        run: |
+          set -e
+          echo "Health checks"
+          curl --fail --silent --show-error http://localhost:5029/health/live
+          curl --fail --silent --show-error http://localhost:5230/health/ready
+          curl --fail --silent --show-error http://localhost:5121/health/ready
+
+          echo "Login a través del Gateway"
+          curl --fail --silent --show-error -X POST http://localhost:5029/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"usuario":"admin","password":"admin123"}'
+
+          echo "El catálogo es público"
+          curl --fail --silent --show-error http://localhost:5029/api/productos
+
+          echo "Escribir sin token debe dar 401"
+          codigo=$(curl --silent --output /dev/null --write-out "%{http_code}" -X POST http://localhost:5029/api/productos \
+            -H "Content-Type: application/json" \
+            -d '{"nombre":"x","categoriaId":1,"precio":1,"stock":1}')
+          test "$codigo" = "401" || { echo "Se esperaba 401 y se recibió $codigo"; exit 1; }
+
+      - name: Mostrar logs de los contenedores si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Apagar el sistema
+        if: always()
+        run: docker compose down -v
