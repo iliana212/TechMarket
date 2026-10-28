@@ -10,7 +10,7 @@ namespace TechMarket_Productos.Validators
 		{
 			RuleFor(c => c.Nombre)
 				.NotEmpty().WithMessage("El nombre del producto es obligatorio")
-				.MaximumLength(150).WithMessage("El nombre no puede superar los 150 caracteres");
+				.MaximumLength(100).WithMessage("El nombre no puede superar los 100 caracteres");
 
 			RuleFor(c => c.Precio)
 				.GreaterThan(0).WithMessage("El precio debe ser mayor a cero");

@@ -66,12 +66,13 @@ Beyond the "what" was built, this is the "why" behind the key decisions:
 - **Liveness and readiness health checks** — every service exposes `/health/live` (the process responds) and `/health/ready` (it can also reach its database); Docker Compose uses them as `healthcheck`, so Orders and the Gateway only start once Products is actually ready, not just "started".
 - **Rate limiting at the Gateway** — per-IP limits returning `429` with a `Retry-After` header: 100 requests per minute in general, plus a stricter policy (10 per minute) on login to slow down brute-force attacks.
 - **Observability with distributed tracing** — OpenTelemetry instruments the Gateway, Products and Orders services and exports traces to Jaeger: a single request can be followed end to end (Gateway → Orders → Products over HTTP, SQL queries, and the RabbitMQ event that Products consumes). Logs carry `TraceId`/`SpanId` so they can be correlated with the trace.
-- **Continuous integration with GitHub Actions** — on every push and pull request it builds the three microservices, builds the images, brings the whole system up with Docker Compose, waits for the health checks to pass, and runs smoke tests against the Gateway (login, public catalog, and rejection of unauthenticated writes).
+- **Automated tests with xUnit** — unit tests (validators, global error handling, the Orders endpoints' business rules with Products and RabbitMQ faked) and integration tests against a real PostgreSQL in a container (Testcontainers), including a concurrency test that fires simultaneous stock decrements and verifies that stock never goes negative or inconsistent.
+- **Continuous integration with GitHub Actions** — on every push and pull request it builds the three microservices, runs the automated tests, builds the images, brings the whole system up with Docker Compose, waits for the health checks to pass, and runs smoke tests against the Gateway (login, public catalog, and rejection of unauthenticated writes).
 - **Secrets kept out of version control** — credentials and JWT signing keys parameterized via `.env` (never committed), with `appsettings.json` containing only safe placeholders.
 
 ## Tech stack
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + messaging) · `RabbitMQ` · `Polly` (resilience) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `xUnit` · `Testcontainers` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
 
 ## Running it locally
 
@@ -92,6 +93,19 @@ docker-compose up -d --build
 | RabbitMQ Management | http://localhost:15672 |
 | Jaeger (traces) | http://localhost:16686 |
 | Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
+
+## Tests
+
+```bash
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj      # all (requires Docker)
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj --filter "FullyQualifiedName~TechMarket_Tests.Unit"     # unit tests only, no Docker
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj --filter "FullyQualifiedName~TechMarket_Tests.Integration"    # integration only
+```
+
+| Level | What it covers |
+|---|---|
+| **Unit** | Products validators (including length limits), global exception handling for both services, and the Orders endpoints: total computed with the real price from Products, missing/inactive product, insufficient stock, the whole order rejected if one line fails, and `503` when Products is unavailable |
+| **Integration** | Products and Orders repositories against a real PostgreSQL with the real migrations, real database errors (duplicate name, text too long, invalid foreign key) translated to their HTTP code, and concurrent stock decrements |
 
 ## Screenshots
 

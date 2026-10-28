@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="TechMarket_Gateway/TechMarket_Gateway/TechMarket_Gateway.csproj" />
+  <Project Path="TechMarket_Pedidos/TechMarket_Pedidos/TechMarket_Pedidos.csproj" />
+  <Project Path="TechMarket_Productos/TechMarket_Productos/TechMarket_Productos.csproj" />
+  <Project Path="TechMarket_Tests/TechMarket_Tests.csproj" />
+</Solution>

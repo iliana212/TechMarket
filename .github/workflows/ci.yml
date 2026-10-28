@@ -49,6 +49,63 @@ jobs:
         run: dotnet build ${{ matrix.proyecto }} --configuration Release --no-restore
 
   # ---------------------------------------------------------------
+  # 1b) Pruebas automatizadas: unitarias (sin Docker) e integración (PostgreSQL real con Testcontainers)
+  # ---------------------------------------------------------------
+  pruebas:
+    name: Pruebas automatizadas
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+    env:
+      PROYECTO_PRUEBAS: TechMarket_Tests/TechMarket_Tests.csproj
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cachear paquetes NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restaurar dependencias
+        run: dotnet restore ${{ env.PROYECTO_PRUEBAS }}
+
+      - name: Compilar (Release)
+        run: dotnet build ${{ env.PROYECTO_PRUEBAS }} --configuration Release --no-restore
+
+      - name: Pruebas unitarias
+        run: >
+          dotnet test ${{ env.PROYECTO_PRUEBAS }}
+          --configuration Release --no-build
+          --filter "FullyQualifiedName~TechMarket_Tests.Unit"
+          --logger "trx;LogFileName=unitarias.trx"
+          --results-directory ./resultados-pruebas
+
+      # Los runners de GitHub incluyen Docker, que Testcontainers necesita para levantar PostgreSQL
+      - name: Pruebas de integración
+        run: >
+          dotnet test ${{ env.PROYECTO_PRUEBAS }}
+          --configuration Release --no-build
+          --filter "FullyQualifiedName~TechMarket_Tests.Integration"
+          --logger "trx;LogFileName=integracion.trx"
+          --results-directory ./resultados-pruebas
+
+      # Se sube aunque las pruebas fallen, para poder revisar el detalle
+      - name: Guardar resultados de las pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas
+          path: resultados-pruebas/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ---------------------------------------------------------------
   # 2) Construye las imágenes, levanta TODO el sistema con docker compose
   #    y ejecuta pruebas de humo contra el Gateway
   # ---------------------------------------------------------------

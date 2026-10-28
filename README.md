@@ -64,12 +64,13 @@ Más allá del "qué" está construido, esto es el "por qué" detrás de las dec
 - **Health checks de liveness y readiness** — cada servicio expone `/health/live` (el proceso responde) y `/health/ready` (además puede hablar con su base de datos); Docker Compose los usa como `healthcheck`, así que Pedidos y el Gateway solo arrancan cuando Productos está realmente listo, no solo "iniciado".
 - **Rate limiting en el Gateway** — límite por IP con respuesta `429` y header `Retry-After`: 100 peticiones por minuto en general y una política más estricta (10 por minuto) en el login para frenar ataques de fuerza bruta.
 - **Observabilidad con trazas distribuidas** — OpenTelemetry instrumenta Gateway, Productos y Pedidos y exporta las trazas a Jaeger: una sola petición se ve de punta a punta (Gateway → Pedidos → Productos por HTTP, consultas SQL, y el evento de RabbitMQ que Productos consume). Los logs incluyen `TraceId`/`SpanId` para correlacionarlos con la traza.
-- **Integración continua con GitHub Actions** — en cada push y pull request compila los tres microservicios, construye las imágenes, levanta todo el sistema con Docker Compose, espera a que los health checks pasen y ejecuta pruebas de humo contra el Gateway (login, catálogo público y rechazo de escrituras sin token).
+- **Pruebas automatizadas con xUnit** — pruebas unitarias (validadores, manejo global de errores, reglas de negocio de los endpoints de Pedidos con Productos y RabbitMQ simulados) y de integración contra un PostgreSQL real en contenedor (Testcontainers), incluida una prueba de concurrencia que lanza descuentos de stock simultáneos y verifica que el stock nunca queda negativo ni inconsistente.
+- **Integración continua con GitHub Actions** — en cada push y pull request compila los tres microservicios, ejecuta las pruebas automatizadas, construye las imágenes, levanta todo el sistema con Docker Compose, espera a que los health checks pasen y ejecuta pruebas de humo contra el Gateway (login, catálogo público y rechazo de escrituras sin token).
 - **Manejo de secretos fuera del control de versiones** — credenciales y claves de firma JWT parametrizadas vía `.env` (nunca commiteadas), con `appsettings.json` conteniendo solo placeholders seguros.
 
 ## Stack técnico
 
-`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
+`.NET 10` · `ASP.NET Core Minimal APIs` · `Entity Framework Core` · `PostgreSQL` · `Wolverine` (CQRS + mensajería) · `RabbitMQ` · `Polly` (resiliencia) · `YARP` (API Gateway) · `JWT Bearer` · `FluentValidation` · `xUnit` · `Testcontainers` · `Health Checks` · `Rate Limiting` · `OpenTelemetry` · `Jaeger` · `Docker` / `Docker Compose`
 
 ## Cómo correrlo localmente
 
@@ -90,6 +91,19 @@ docker-compose up -d --build
 | RabbitMQ Management | http://localhost:15672 |
 | Jaeger (trazas) | http://localhost:16686 |
 | Health checks | http://localhost:5230/health/ready · http://localhost:5121/health/ready · http://localhost:5029/health/live |
+
+## Pruebas
+
+```bash
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj            # todas (requiere Docker)
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj --filter "FullyQualifiedName~TechMarket_Tests.Unit"     # solo unitarias, sin Docker
+dotnet test TechMarket_Tests/TechMarket_Tests.csproj --filter "FullyQualifiedName~TechMarket_Tests.Integration"  # solo integración
+```
+
+| Nivel | Qué cubre |
+|---|---|
+| **Unitarias** | Validadores de Productos (incluidos los límites de longitud), manejo global de excepciones de ambos servicios, y los endpoints de Pedidos: total calculado con el precio real de Productos, producto inexistente/inactivo, stock insuficiente, rechazo del pedido completo si una línea falla y `503` cuando Productos no está disponible |
+| **Integración** | Repositorios de Productos y Pedidos contra PostgreSQL real con las migraciones reales, errores reales de la base de datos (nombre duplicado, texto demasiado largo, llave foránea inválida) traducidos a su código HTTP, y descuentos de stock concurrentes |
 
 ## Capturas
 

@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Diagnostics;
 using TechMarket_Productos.Exceptions;
 
 namespace TechMarket_Productos.Middleware
 {
-	public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> _logger) : IExceptionHandler
+	public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> _logger, IHostEnvironment _env) : IExceptionHandler
 	{
 		public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
 		{
@@ -23,8 +24,8 @@ namespace TechMarket_Productos.Middleware
 				
 				// Cualquier otro error al guardar en la base de datos (truncado, FK inválida, etc.)
 				DbUpdateException => (StatusCodes.Status400BadRequest, "Error al guardar los datos", "No se pudo guardar la información. Verifica los datos enviados."),
-				
-				_ => (StatusCodes.Status500InternalServerError, "Error interno del servidor", exception.Message)
+
+				_ => (StatusCodes.Status500InternalServerError, "Error interno del servidor", _env.IsDevelopment() ? exception.Message : "Ocurrió un error inesperado.")
 			};
 
 			if (statusCode == StatusCodes.Status500InternalServerError)
@@ -45,6 +46,9 @@ namespace TechMarket_Productos.Middleware
 				Detail = detalle,
 				Instance = httpContext.Request.Path
 			};
+
+			//TraceId que se ve en Jaeger y en los logs
+			problemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier;
 
 			if (exception is ValidationException validationException)
 			{
